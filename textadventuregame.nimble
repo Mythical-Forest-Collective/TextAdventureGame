@@ -8,6 +8,6 @@ srcDir        = "src"
 bin           = @["textadventuregame"]
 
 # Dependencies
-requires "nim >= 1.6.8"
+requires "nim >= 1.6.6"
 requires "fab >= 0.4.3" #https://nimble.directory/pkg/fab
 #requires "nigui"

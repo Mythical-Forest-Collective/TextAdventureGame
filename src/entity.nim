@@ -13,18 +13,24 @@
 # limitations under the License.
 import std/[
   macros,
-  sequtils
+  sequtils,
+  strformat,
+  sugar
 ]
+
+import ./utils
 
 #? Types
 type
+  NonexistentComponentDefect = object of Defect
+
   Entity* = object
     serializable: Serializable
 
   #? "Species" of entity, has the components that control the entity and used for serializing
   #? (E.g. in bytes 0 = slime, 1 = banshee. Using a deserializer would return the constant/let)
   Serializable = object
-    components: openArray[BaseComponent]
+    components: seq[BaseComponent]
 
   ComponentTypes = enum
     EmptyComponentType, InfoComponentType, HealthComponentType
@@ -32,7 +38,6 @@ type
   #? Components define how an entity behaves.
   BaseComponent* = ref object of RootObj
     componentType: ComponentTypes
-
 
 #? Custom components
 type
@@ -45,9 +50,28 @@ type
     max: int
     current: int
 
+#? Nifty shorthands
+template componentTypes(s: Serializable): seq[ComponentTypes] = collect(newSeq):
+  for component in s.components:
+    component.componentType
+
+template hasComponent(e: Entity, componentType: ComponentTypes): bool = componentType in e.serializable.componentTypes
+
+template componentCheck(e: Entity, componentType: ComponentTypes) =
+  if not e.hasComponent(InfoComponentType):
+    raise newException(NonexistentComponentDefect, "This method does not have the needed components!")
+
+template componentCheckAndGet(e: Entity, componentType: ComponentTypes): BaseComponent =
+  if not e.hasComponent(InfoComponentType):
+    raise newException(NonexistentComponentDefect, "This method does not have the needed components!")
+
+  for component in e.serializable.components:
+    if component.componentType == componentType:
+      return component
+
 #? Entity init method
 proc init*(_: typedesc[Entity], components: varargs[BaseComponent]): Entity =
-  result = Entity(serializable: Serializable(components: components))
+  result = Entity(serializable: Serializable(components: components.toSeq))
 
 #? Component init methods
 proc init*(_: typedesc[BaseComponent]): BaseComponent =
@@ -70,15 +94,23 @@ proc init*(_: typedesc[HealthComponent], maxHealth: int=20, currentHealth: int= 
   if (currentHealth > maxHealth) or (currentHealth < 0):
     result.currentHealth = maxHealth
 
+#? So we can access properties of components near seamlessly
+template firstName*(entity: Entity): string =
+  return (entity.componentCheckAndGet(InfoComponentType).InfoComponent).firstName
 
 
-# Macro that just adds an if check, if the component doesn't exist then you'll get errors
-macro ensureComponents(componentTypes: openArray[ComponentTypes], procedure: untyped) =
-  echo procedure.treeRepr
 
 
+#? Macro that just adds an if check, if the component doesn't exist then you'll get errors, it's clean and easy
+#? to use
+macro ensureComponents*(componentTypes: openArray[ComponentTypes], procedure: untyped) =
+  let entityParamName = procedure[3][1][0]
+  procedure[^1].insert(0, quote do:
+    for componentType in `componentTypes`:
+      componentCheck(`entityParamName`, componentType)
+  )
+  return procedure
 
-# TODO: Create a macro for ensuring that a component exists
 #? Component methods
 proc say*(entity: Entity, input: varargs[string], delay:int=80) {.ensureComponents: [InfoComponentType].} = 
   slowType([fmt"[{entity.firstName}]", input.join(" ")])
@@ -94,7 +126,6 @@ proc action*(entity: Entity, input: varargs[string], delay=65) {.ensureComponent
   )
 
   slowType(msg, delay=delay)
-
 
 #? ECS functions
 #? The step method is currently unneeded
