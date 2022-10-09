@@ -5,7 +5,7 @@ author        = "EHC + Ecorous"
 description   = "A text adventure game"
 license       = "Apache-2.0"
 srcDir        = "src"
-bin           = @["TextAdventureGame"]
+bin           = @["textadventuregame"]
 
 # Dependencies
 requires "nim >= 1.6.8"

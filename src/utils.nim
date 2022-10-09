@@ -1,3 +1,17 @@
+# Copyright 2022 EHC + Ecorous
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import std/[
   strutils,
   strformat,
@@ -7,14 +21,7 @@ import std/[
 
 const SLOW_TYPING_UNMARKER = "!_!" # 3 in length
 
-template markAsFast(text: string): string = SLOW_TYPING_UNMARKER & text & SLOW_TYPING_UNMARKER
-
-# Base entity we inherit from for other entities, like NPCs, Enemies, Player -Blackhole
-type Entity* = object of RootObj
-  firstName*: string
-  lastName*: string
-  age*: int
-
+template markAsFast*(text: string): string = SLOW_TYPING_UNMARKER & text & SLOW_TYPING_UNMARKER
 
 proc slowType*(input: varargs[string], delay: int=80) =
   var text = input.join(" ")
@@ -43,28 +50,3 @@ proc slowType*(input: varargs[string], delay: int=80) =
 
   stdout.write('\n')
   stdout.flushFile()
-
-
-proc new*(_: typedesc[Entity], firstName: string, lastName: string, age: int): Entity =
-  return Entity(
-    firstName: firstName.capitalizeAscii,
-    lastName: lastName.capitalizeAscii,
-    age: age
-  )
-
-
-proc say*(entity: Entity, input: varargs[string], delay:int=80) = 
-  slowType([fmt"[{entity.firstName}]", input.join(" ")])
-
-# Actions should be slightly faster
-proc action*(entity: Entity, input: varargs[string], delay=65) =
-  var msg = "*" & input.join(" ") & "*"
-
-  msg = msg.multiReplace(
-    ("<name>", entity.firstName),
-    ("<lastname>", entity.lastName),
-    ("<fullname>", fmt"{entity.firstName} {entity.lastName}")
-  )
-
-  slowType(msg, delay=delay)
-

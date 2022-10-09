@@ -1,0 +1,35 @@
+{
+  "room": 1,
+  "player":{
+    "components": [
+      {
+        "type": "HealthComponent",
+        "maxHealth": 100, 
+        "health": 20
+      }
+    ]
+  },
+  "battleData":{
+    "enemies": [
+      {
+        "id": 2477,
+        "components":[ 
+          {
+            "type": "HealthComponent",
+            "maxHealth": 10,  // I mean it would let us have comments LOL (that's a joke, as json doesn't have them). aight
+            "health": 20
+          }
+        ]
+      }
+    ]
+    
+  },
+  "data": {
+    "inventory": {
+      "equipped": {
+        "head": null, // if it's null, they're wearing nothing
+        "chest": 12,  // 12 is an ID
+        "leggings": "Invalid Value" // Values that aren't an int or null are treated as if they were null
+    }
+  }
+}
