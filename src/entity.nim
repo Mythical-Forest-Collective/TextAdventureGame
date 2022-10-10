@@ -14,6 +14,7 @@
 import std/[
   macros,
   sequtils,
+  strutils,
   strformat,
   sugar
 ]
@@ -33,7 +34,7 @@ type
     components: seq[BaseComponent]
 
   ComponentTypes = enum
-    EmptyComponentType, InfoComponentType, HealthComponentType
+    EmptyComponentType, InfoComponentType, HealthComponentType, ManaComponentType
 
   #? Components define how an entity behaves.
   BaseComponent* = ref object of RootObj
@@ -50,24 +51,28 @@ type
     max: int
     current: int
 
-#? Nifty shorthands
-template componentTypes(s: Serializable): seq[ComponentTypes] = collect(newSeq):
+  ManaComponent* = ref object of BaseComponent
+    max: int
+    current: int
+
+#? Nifty procs for component checking
+proc componentTypes(s: Serializable): seq[ComponentTypes] = collect(newSeq):
   for component in s.components:
     component.componentType
 
-template hasComponent(e: Entity, componentType: ComponentTypes): bool = componentType in e.serializable.componentTypes
+proc hasComponent(e: Entity, componentType: ComponentTypes): bool =
+  result = componentType in e.serializable.componentTypes
 
-template componentCheck(e: Entity, componentType: ComponentTypes) =
+proc componentCheck(e: Entity, componentType: ComponentTypes) =
   if not e.hasComponent(InfoComponentType):
-    raise newException(NonexistentComponentDefect, "This method does not have the needed components!")
+    raise newException(NonexistentComponentDefect, fmt"This method does not have the component {$componentType}!")
 
-template componentCheckAndGet(e: Entity, componentType: ComponentTypes): BaseComponent =
-  if not e.hasComponent(InfoComponentType):
-    raise newException(NonexistentComponentDefect, "This method does not have the needed components!")
-
+proc componentCheckAndGet(e: Entity, componentType: ComponentTypes): BaseComponent =
   for component in e.serializable.components:
     if component.componentType == componentType:
       return component
+
+  raise newException(NonexistentComponentDefect, "This method does not have the needed components!")
 
 #? Entity init method
 proc init*(_: typedesc[Entity], components: varargs[BaseComponent]): Entity =
@@ -81,25 +86,59 @@ proc init*(_: typedesc[BaseComponent]): BaseComponent =
 
 proc init*(_: typedesc[InfoComponent], firstName, lastName: string, age: int=0): InfoComponent =
   result = InfoComponent()
+
   result.firstName = firstName
   result.lastName = lastName
   result.age = age
 
+  result.componentType = InfoComponentType
+
 proc init*(_: typedesc[HealthComponent], maxHealth: int=20, currentHealth: int= -1): HealthComponent =
   result = HealthComponent()
 
-  result.componentType = HealthComponentType
   result.max = maxHealth
   result.current = currentHealth
   if (currentHealth > maxHealth) or (currentHealth < 0):
     result.currentHealth = maxHealth
 
+  result.componentType = HealthComponentType
+
+proc init*(_: typedesc[HealthComponent], maxMana: int=20, currentMana: int= -1): ManaComponent =
+  result = ManaComponent()
+
+  result.max = maxMana
+  result.current = currentMana
+  if (currentMana > maxMana) or (currentMana < 0):
+    result.currentMana = maxMana
+
+  result.componentType = ManaComponentType
+
 #? So we can access properties of components near seamlessly
-template firstName*(entity: Entity): string =
-  return (entity.componentCheckAndGet(InfoComponentType).InfoComponent).firstName
+# TODO: Implement a macro to automate expanding component properties to entities
+#? InfoComponent fields
+template firstName*(entity: Entity): string = (entity.componentCheckAndGet(InfoComponentType).InfoComponent).firstName
 
+template lastName*(entity: Entity): string = (entity.componentCheckAndGet(InfoComponentType).InfoComponent).lastName
 
+#? HealthComponent fields
+template maxHealth*(entity: Entity): int = (entity.componentCheckAndGet(HealthComponentType).HealthComponentType).max
+template `maxHealth=`*(entity: Entity, val: int): int = (entity.componentCheckAndGet(HealthComponentType).HealthComponentType).max = val
 
+template currentHealth*(entity: Entity): int = (entity.componentCheckAndGet(HealthComponentType).HealthComponentType).current
+template `currentHealth=`*(entity: Entity, val: int): int = (entity.componentCheckAndGet(HealthComponentType).HealthComponentType).current = val
+
+template curHealth*(entity: Entity): int = entity.currentHealth
+template `curHealth=`*(entity: Entity, val: int): int = entity.currentHealth = val
+
+#? ManaComponent fields
+template maxMana*(entity: Entity): int = (entity.componentCheckAndGet(ManaComponentType).ManaComponentType).max
+template `maxMana=`*(entity: Entity, val: int): int = (entity.componentCheckAndGet(ManaComponentType).ManaComponentType).max = val
+
+template currentMana*(entity: Entity): int = (entity.componentCheckAndGet(ManaComponentType).ManaComponentType).current
+template `currentMana=`*(entity: Entity, val: int): int = (entity.componentCheckAndGet(ManaComponentType).ManaComponentType).current = val
+
+template curMana*(entity: Entity): int = entity.currentMana
+template `curMana=`*(entity: Entity, val: int): int = entity.currentMana = val
 
 #? Macro that just adds an if check, if the component doesn't exist then you'll get errors, it's clean and easy
 #? to use
